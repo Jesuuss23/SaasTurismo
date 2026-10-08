@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: qhapaq_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: qhapaq_db
+      POSTGRES_USER: qhapaq_user
+      POSTGRES_PASSWORD: qhapaq_secure_pass_2026
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:8-alpine
+    container_name: qhapaq_redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6380:6379"
+
+volumes:
+  pgdata:
