@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
@@ -74,4 +75,10 @@ class Product extends Model
     {
         return $this->belongsTo(Provider::class, 'main_provider_id');
     }
+
+    public function rates(): HasMany
+    {
+        return $this->hasMany(\App\Models\Rate::class, 'product_id');
+    }
+
 }

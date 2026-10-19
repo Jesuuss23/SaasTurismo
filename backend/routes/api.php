@@ -17,13 +17,32 @@ use App\Http\Controllers\Api\Collaboration\ApprovalController;
 use App\Http\Controllers\Api\Catalog\AllotmentController;
 use App\Http\Controllers\Api\Channels\B2bAgencyController;
 use App\Http\Controllers\Api\Providers\ProviderPortalController;
+use App\Http\Controllers\Api\Public\PublicCatalogController;
+use App\Http\Controllers\Api\Public\PaymentWebhookController;
+use App\Http\Controllers\Api\Bookings\TravelDocumentController;
+use App\Http\Controllers\Api\Finance\PayableController;
+use App\Http\Controllers\Api\Messaging\MessagingController;
+use App\Http\Controllers\Api\Analytics\AnalyticsController;
+use App\Http\Controllers\Api\Portal\B2bPortalController;
 use App\Models\Rate;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
 
+
     Route::post('/auth/login', [AuthController::class, 'login']);
 
+    Route::prefix('public')->middleware([SetPostgresTenant::class])->group(function () {
+        Route::get('/products', [PublicCatalogController::class, 'getProducts']);
+        Route::get('/products/{idOrSlug}', [PublicCatalogController::class, 'getProductDetail']);
+        Route::post('/checkout', [PublicCatalogController::class, 'checkout']);
+
+        Route::post('/payments/webhook', [PaymentWebhookController::class, 'handle']);
+
+        Route::get('/reservations/{code}/voucher', [TravelDocumentController::class, 'getVoucherData']);
+        Route::get('/reservations/{code}/voucher-view', [TravelDocumentController::class, 'renderVoucherHtml']);
+    });
+    
     Route::middleware(['auth:sanctum', SetPostgresTenant::class])->group(function () {
 
 
@@ -95,6 +114,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [ReservationController::class, 'index']);
             Route::post('/from-quote', [ReservationController::class, 'storeFromQuote']);
             Route::get('/{id}', [ReservationController::class, 'show']);
+
+            Route::get('/{idOrCode}/voucher-data', [TravelDocumentController::class, 'getVoucherData']);
+            Route::get('/{idOrCode}/voucher-html', [TravelDocumentController::class, 'renderVoucherHtml']);
         });
         Route::prefix('operations')->group(function () {
             Route::get('/orders', [OperationsController::class, 'index']);
@@ -105,6 +127,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/receivables', [FinanceController::class, 'getReceivables']);
             Route::post('/payments', [FinanceController::class, 'registerPayment']);
             Route::get('/payments', [FinanceController::class, 'getPayments']);
+
+            Route::get('/payables', [PayableController::class, 'index']);
+            Route::post('/payables/from-service/{serviceId}', [PayableController::class, 'storeFromService']);
+            Route::post('/payables/{payableId}/disbursements', [PayableController::class, 'registerDisbursement']);
         });
         Route::prefix('approvals')->group(function () {
             Route::get('/', [ApprovalController::class, 'index']);
@@ -121,11 +147,26 @@ Route::prefix('v1')->group(function () {
             Route::post('/services/{serviceId}/reject', [ProviderPortalController::class, 'rejectService']);
         });
 
+        Route::prefix('messaging')->group(function () {
+            Route::get('/templates', [MessagingController::class, 'getTemplates']);
+            Route::get('/logs', [MessagingController::class, 'getMessages']);
+            Route::post('/dispatch', [MessagingController::class, 'dispatchMessage']);
+        });
+        
+        Route::prefix('analytics')->group(function () {
+            Route::get('/summary', [AnalyticsController::class, 'getExecutiveSummary']);
+        });
+        Route::prefix('portal/provider')->group(function () {
+            Route::get('/services', [ProviderPortalController::class, 'getAssignedServices']);
+            Route::post('/services/{id}/confirm', [ProviderPortalController::class, 'confirmService']);
+            Route::post('/services/{id}/reject', [ProviderPortalController::class, 'rejectService']);
+        });
 
-
-
-
-
+        Route::prefix('portal/b2b')->group(function () {
+            Route::get('/profile', [B2bPortalController::class, 'getAgencyProfile']);
+            Route::get('/catalog', [B2bPortalController::class, 'getCatalog']);
+            Route::post('/book', [B2bPortalController::class, 'book']);
+        });
 
 
 

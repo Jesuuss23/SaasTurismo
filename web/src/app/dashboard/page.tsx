@@ -6,17 +6,11 @@ import { fetchApi } from '@/lib/api';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [stats, setStats] = useState<any>({
-    leads: 0,
-    products: 0,
-    reservations: 0,
-    receivables: 0
-  });
+  const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-
     if (!token) {
       router.push('/login');
       return;
@@ -24,21 +18,10 @@ export default function DashboardPage() {
 
     async function loadData() {
       try {
-        const [leads, prods, res, recs] = await Promise.all([
-          fetchApi('/crm/leads'),
-          fetchApi('/catalog/products'),
-          fetchApi('/reservations'),
-          fetchApi('/finance/receivables'),
-        ]);
-
-        setStats({
-          leads: leads.data?.total || leads.data?.data?.length || 0,
-          products: prods.data?.total || prods.data?.data?.length || 0,
-          reservations: res.data?.total || res.data?.data?.length || 0,
-          receivables: recs.data?.total || recs.data?.data?.length || 0,
-        });
+        const res = await fetchApi('/analytics/summary');
+        setSummary(res.data);
       } catch (err) {
-        console.error(err);
+        console.error('Error cargando analítica:', err);
       } finally {
         setLoading(false);
       }
@@ -48,78 +31,100 @@ export default function DashboardPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-amber-400">
-              Panel de Control
-            </h1>
+    <div className="space-y-8">
+      {/* Header */}
+      <header className="border-b border-slate-800 pb-5">
+        <h1 className="text-3xl font-extrabold text-amber-400">Panel de Control Ejecutivo</h1>
+        <p className="text-sm text-slate-400 mt-1">
+          Métricas consolidadas de ventas, tesorería y conversión en tiempo real
+        </p>
+      </header>
 
-            <p className="text-sm text-slate-400">
-              Qhapaq Travel Suite · Panel de Control General
-            </p>
-          </div>
-
-          <button
-            onClick={() => {
-              localStorage.clear();
-              router.push('/login');
-            }}
-            className="rounded-lg bg-red-600/80 px-4 py-2 text-sm font-semibold hover:bg-red-500 transition"
-          >
-            Cerrar sesión
-          </button>
-        </header>
-
-        {loading ? (
-          <p className="text-slate-400">
-            Cargando información...
-          </p>
-        ) : (
+      {loading ? (
+        <div className="text-slate-400 py-12 text-center">Cargando métricas consolidadas...</div>
+      ) : summary ? (
+        <>
+          {/* Tarjetas Principales */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="rounded-xl bg-slate-900 border border-slate-800 p-6">
-              <h3 className="text-sm font-medium text-slate-400">
-                Leads (CRM)
-              </h3>
-
-              <p className="text-3xl font-bold text-white mt-2">
-                {stats.leads}
+              <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">Ventas Totales</span>
+              <p className="text-3xl font-black text-amber-400 mt-2">
+                ${summary.commercial.total_sales.toFixed(2)}
               </p>
+              <span className="text-xs text-slate-500 mt-1 block">
+                {summary.commercial.reservations_count} reservas registradas
+              </span>
             </div>
 
             <div className="rounded-xl bg-slate-900 border border-slate-800 p-6">
-              <h3 className="text-sm font-medium text-slate-400">
-                Productos
-              </h3>
-
-              <p className="text-3xl font-bold text-white mt-2">
-                {stats.products}
+              <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">Cobrado (Inflow)</span>
+              <p className="text-3xl font-black text-emerald-400 mt-2">
+                ${summary.commercial.total_collected.toFixed(2)}
               </p>
+              <span className="text-xs text-slate-500 mt-1 block">
+                Margen comercial: {summary.commercial.margin_pct}%
+              </span>
             </div>
 
             <div className="rounded-xl bg-slate-900 border border-slate-800 p-6">
-              <h3 className="text-sm font-medium text-slate-400">
-                Reservas
-              </h3>
-
-              <p className="text-3xl font-bold text-white mt-2">
-                {stats.reservations}
+              <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">Por Cobrar (CxC)</span>
+              <p className="text-3xl font-black text-sky-400 mt-2">
+                ${summary.cashflow.cxc_pending.toFixed(2)}
               </p>
+              <span className="text-xs text-slate-500 mt-1 block">Saldo pendiente clientes</span>
             </div>
 
             <div className="rounded-xl bg-slate-900 border border-slate-800 p-6">
-              <h3 className="text-sm font-medium text-slate-400">
-                Cuentas por Cobrar (CxC)
-              </h3>
-
-              <p className="text-3xl font-bold text-white mt-2">
-                {stats.receivables}
+              <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">Por Pagar (CxP)</span>
+              <p className="text-3xl font-black text-rose-400 mt-2">
+                ${summary.cashflow.cxp_pending.toFixed(2)}
               </p>
+              <span className="text-xs text-slate-500 mt-1 block">Obligaciones proveedores</span>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Balances */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="rounded-xl bg-slate-900 border border-slate-800 p-6 space-y-4">
+              <h3 className="text-lg font-bold text-white border-b border-slate-800 pb-2">
+                Posición Financiera Neta
+              </h3>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Total Ingresos Recaudados:</span>
+                <span className="font-semibold text-emerald-400">${summary.cashflow.total_inflow.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Utilidad Bruta Estimada:</span>
+                <span className="font-semibold text-white">${summary.commercial.gross_profit.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Flujo Neto por Percibir (CxC - CxP):</span>
+                <span className="font-semibold text-amber-400">${summary.cashflow.net_receivable.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-slate-900 border border-slate-800 p-6 space-y-4">
+              <h3 className="text-lg font-bold text-white border-b border-slate-800 pb-2">
+                Embudo Comercial (CRM)
+              </h3>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Leads Registrados:</span>
+                <span className="font-semibold text-white">{summary.funnel.leads_count}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Cotizaciones Emitidas:</span>
+                <span className="font-semibold text-white">{summary.funnel.quotes_count}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Clientes Totales:</span>
+                <span className="font-semibold text-white">{summary.funnel.clients_count}</span>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-rose-400 py-12 text-center">No se pudieron cargar las métricas.</div>
+      )}
     </div>
   );
 }
